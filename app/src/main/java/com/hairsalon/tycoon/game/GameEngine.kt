@@ -217,6 +217,16 @@ object GameEngine {
 
     fun toMenu(): GameState = GameState()
 
+    /**
+     * Prepare a loaded save for play: seed the id counter past any existing client id
+     * so freshly spawned clients can't collide with restored ones.
+     */
+    fun resumeFrom(s: GameState): GameState {
+        val maxId = (s.queue.map { it.id } + s.active.map { it.client.id }).maxOrNull() ?: 0L
+        if (maxId > idCounter) idCounter = maxId
+        return s
+    }
+
     // -------------------------------------------------------------------------
     //  Shop / upgrades (between days)
     // -------------------------------------------------------------------------

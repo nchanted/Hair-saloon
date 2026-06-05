@@ -41,7 +41,11 @@ import com.hairsalon.tycoon.ui.theme.PinkDark
 fun GameApp(vm: GameViewModel) {
     val s = vm.state
     when (s.phase) {
-        Phase.MENU -> MenuScreen(onStart = vm::newGame)
+        Phase.MENU -> MenuScreen(
+            hasSave = vm.hasSave,
+            onContinue = vm::continueGame,
+            onStart = vm::newGame
+        )
         Phase.PLAYING -> GameScreen(s, onSeat = vm::seat, onEndDay = vm::endDay)
         Phase.SHOP -> ShopScreen(s, vm)
         Phase.GAME_OVER -> GameOverScreen(s, onRestart = vm::newGame, onMenu = vm::toMenu)
@@ -49,7 +53,7 @@ fun GameApp(vm: GameViewModel) {
 }
 
 @Composable
-private fun MenuScreen(onStart: () -> Unit) {
+private fun MenuScreen(hasSave: Boolean, onContinue: () -> Unit, onStart: () -> Unit) {
     var showHelp by remember { mutableStateOf(false) }
     Box(
         Modifier
@@ -78,12 +82,31 @@ private fun MenuScreen(onStart: () -> Unit) {
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(40.dp))
-            Button(
-                onClick = onStart,
-                colors = ButtonDefaults.buttonColors(containerColor = Cream, contentColor = PinkDark),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) { Text("NEW GAME", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+
+            if (hasSave) {
+                // Continue is the primary action when a save exists.
+                Button(
+                    onClick = onContinue,
+                    colors = ButtonDefaults.buttonColors(containerColor = Cream, contentColor = PinkDark),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) { Text("CONTINUE", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onStart,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = androidx.compose.ui.graphics.Color.White),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) { Text("New game") }
+            } else {
+                Button(
+                    onClick = onStart,
+                    colors = ButtonDefaults.buttonColors(containerColor = Cream, contentColor = PinkDark),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) { Text("NEW GAME", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+            }
+
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
                 onClick = { showHelp = !showHelp },
@@ -91,6 +114,16 @@ private fun MenuScreen(onStart: () -> Unit) {
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) { Text(if (showHelp) "Hide instructions" else "How to play") }
+
+            if (hasSave) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Starting a new game replaces your saved one.",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             if (showHelp) {
                 Spacer(Modifier.height(16.dp))

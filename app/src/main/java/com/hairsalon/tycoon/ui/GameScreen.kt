@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -248,22 +249,36 @@ private fun TopBar(s: GameState, closing: Boolean) {
     }
 }
 
+private val CAPE_PALETTE = listOf(
+    Color(0xFF37474F), Color(0xFF00897B), Color(0xFFAD1457),
+    Color(0xFF5E35B1), Color(0xFF455A64), Color(0xFF00838F)
+)
+
 @Composable
 private fun ChairsRow(s: GameState) {
     val emptyChairs = (s.stationCount - s.active.size).coerceAtLeast(0)
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(s.active, key = { it.client.id }) { a ->
             val stylist = s.stylists.firstOrNull { it.id == a.stylistId }
-            ActiveChairCard(a, stylist)
+            val cape = CAPE_PALETTE[(a.client.id % CAPE_PALETTE.size).toInt()]
+            ActiveChairCard(a, stylist, cape)
         }
         items(emptyChairs) {
             Card(
-                Modifier.size(width = 126.dp, height = 132.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                Modifier.size(width = 150.dp, height = 200.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("\uD83D\uDCBA empty", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    ChairVisual(
+                        occupied = false,
+                        faceEmoji = null,
+                        capeColor = Color.Transparent,
+                        modifier = Modifier.fillMaxWidth().height(150.dp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text("Open chair", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text("waiting for a client", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                 }
             }
         }
@@ -271,21 +286,27 @@ private fun ChairsRow(s: GameState) {
 }
 
 @Composable
-private fun ActiveChairCard(a: ActiveService, stylist: Stylist?) {
+private fun ActiveChairCard(a: ActiveService, stylist: Stylist?, capeColor: Color) {
     val onTrack = a.quality >= a.client.expectation
     Card(
-        Modifier.size(width = 126.dp, height = 132.dp),
-        shape = RoundedCornerShape(14.dp),
+        Modifier.size(width = 150.dp, height = 200.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(Modifier.padding(8.dp)) {
-            Text("${stylist?.emoji ?: ""}\u2702\uFE0F${a.client.face}", fontSize = 19.sp)
+            ChairVisual(
+                occupied = true,
+                faceEmoji = a.client.face,
+                capeColor = capeColor,
+                modifier = Modifier.fillMaxWidth().height(116.dp)
+            )
             Text(
-                "${stylist?.name ?: "?"} \u2192 ${a.client.service.label}",
+                "${stylist?.emoji ?: ""} ${stylist?.name ?: "?"} \u2702\uFE0F",
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 maxLines = 1
             )
+            Text("${a.client.service.emoji} ${a.client.service.label}", fontSize = 11.sp, maxLines = 1)
             Text(
                 "Quality ${a.quality} / need ${a.client.expectation}",
                 fontSize = 10.sp,
@@ -412,14 +433,24 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
     }
     Card(
         Modifier
-            .size(width = 118.dp, height = 150.dp)
+            .size(width = 122.dp, height = 162.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(Modifier.padding(8.dp)) {
-            Text(c.face, fontSize = 22.sp)
-            Text(c.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(patienceColor.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) { Text(c.face, fontSize = 22.sp) }
+                Spacer(Modifier.width(6.dp))
+                Text(c.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+            }
+            Spacer(Modifier.height(4.dp))
             Text("${c.service.emoji} ${c.service.label}", fontSize = 11.sp)
             Text(
                 "\uD83D\uDCB0 ${c.payValue}  \u2022  exp ${c.expectation}",
