@@ -3,6 +3,7 @@ package com.hairsalon.tycoon.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,8 +47,9 @@ fun GameApp(vm: GameViewModel) {
             onContinue = vm::continueGame,
             onStart = vm::newGame
         )
-        Phase.PLAYING -> GameScreen(s, onSeat = vm::seat, onEndDay = vm::endDay)
+        Phase.PLAYING -> GameScreen(s, onSeat = vm::seat, onEndDay = vm::endDay, onOpenShop = vm::openShop)
         Phase.SHOP -> ShopScreen(s, vm)
+        Phase.DAY_SUMMARY -> DaySummaryScreen(s, onContinue = vm::startNextDay)
         Phase.GAME_OVER -> GameOverScreen(s, onRestart = vm::newGame, onMenu = vm::toMenu)
     }
 }
@@ -137,7 +139,8 @@ private fun MenuScreen(hasSave: Boolean, onContinue: () -> Unit, onStart: () -> 
                         "\u2022 Beat their patience bar \u2014 if it empties, they leave and trash your reputation.\n" +
                         "\u2022 A high enough quality (vs. their expectation) earns tips and good reviews.\n" +
                         "\u2022 Stylists tire as they work and recover while idle, so don't run a one-person show.\n" +
-                        "\u2022 At day's end you pay rent + wages. Spend the rest in the Shop.\n" +
+                        "\u2022 At day's end you pay rent + wages, then start the next day.\n" +
+                        "\u2022 Tap \uD83D\uDEE0\uFE0F Upgrades any time to hire, add chairs, train staff or renovate.\n" +
                         "\u2022 Each day clients are pickier, less patient and arrive faster.\n" +
                         "\u2022 Renovate late-game to unlock premium services and pricier clients!",
                         Modifier.padding(16.dp),
@@ -147,6 +150,85 @@ private fun MenuScreen(hasSave: Boolean, onContinue: () -> Unit, onStart: () -> 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DaySummaryScreen(
+    s: com.hairsalon.tycoon.game.GameState,
+    onContinue: () -> Unit
+) {
+    val sum = s.lastSummary
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Pink500, PinkDark)))
+            .verticalScroll(rememberScrollState()),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            Modifier.padding(28.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("\uD83C\uDF19", fontSize = 48.sp)
+            Text(
+                "Day ${s.day} complete",
+                color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                s.tierName,
+                color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(18.dp))
+            if (sum != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Cream),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        SummaryLine("Clients served", "${sum.served}")
+                        SummaryLine("Clients lost", "${sum.lost}")
+                        SummaryLine("Earnings", "+\$${sum.earned}")
+                        SummaryLine("Tips", "+\$${sum.tips}")
+                        SummaryLine("Rent", "-\$${sum.rent}")
+                        SummaryLine("Wages", "-\$${sum.wages}")
+                        Spacer(Modifier.height(6.dp))
+                        SummaryLine(
+                            "Net",
+                            if (sum.net >= 0) "+\$${sum.net}" else "-\$${-sum.net}",
+                            bold = true
+                        )
+                        SummaryLine("In the till", "\$${s.money}", bold = true)
+                    }
+                }
+            }
+            Spacer(Modifier.height(22.dp))
+            Button(
+                onClick = onContinue,
+                colors = ButtonDefaults.buttonColors(containerColor = Cream, contentColor = PinkDark),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp)
+            ) { Text("OPEN FOR DAY ${s.day + 1}", fontWeight = FontWeight.Bold, fontSize = 17.sp) }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Tip: tap \uD83D\uDEE0\uFE0F Upgrades on the salon floor to spend your earnings.",
+                color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryLine(label: String, value: String, bold: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 14.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+        Text(value, fontSize = 14.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium)
     }
 }
 

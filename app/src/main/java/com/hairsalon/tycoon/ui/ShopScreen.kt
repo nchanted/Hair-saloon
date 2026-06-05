@@ -18,7 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,9 +32,7 @@ import com.hairsalon.tycoon.game.GameEngine
 import com.hairsalon.tycoon.game.GameState
 import com.hairsalon.tycoon.game.GameViewModel
 import com.hairsalon.tycoon.game.Stylist
-import com.hairsalon.tycoon.ui.theme.Bad
 import com.hairsalon.tycoon.ui.theme.Cream
-import com.hairsalon.tycoon.ui.theme.Good
 import com.hairsalon.tycoon.ui.theme.Pink500
 import com.hairsalon.tycoon.ui.theme.PinkDark
 import com.hairsalon.tycoon.ui.theme.Teal
@@ -55,45 +52,17 @@ fun ShopScreen(s: GameState, vm: GameViewModel) {
         ) {
             // ---- Header ----
             Text(
-                "DAY ${s.day} COMPLETE",
+                "\uD83D\uDEE0\uFE0F UPGRADES",
                 color = androidx.compose.ui.graphics.Color.White,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
-                "${s.tierName}  \u2022  Tier ${s.salonTier}",
+                "${s.tierName}  \u2022  Tier ${s.salonTier}  \u2022  Day ${s.day}",
                 color = androidx.compose.ui.graphics.Color.White,
                 fontSize = 14.sp
             )
             Spacer(Modifier.height(14.dp))
-
-            // ---- Day summary ----
-            s.lastSummary?.let { sum ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Cream),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Day report", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(Modifier.height(8.dp))
-                        SummaryRow("Clients served", "${sum.served}")
-                        SummaryRow("Clients lost", "${sum.lost}", if (sum.lost > 0) Bad else null)
-                        SummaryRow("Earnings", "+\$${sum.earned}", Good)
-                        SummaryRow("Tips", "+\$${sum.tips}", Good)
-                        SummaryRow("Rent", "-\$${sum.rent}", Bad)
-                        SummaryRow("Wages", "-\$${sum.wages}", Bad)
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        SummaryRow(
-                            "Net",
-                            (if (sum.net >= 0) "+\$${sum.net}" else "-\$${-sum.net}"),
-                            if (sum.net >= 0) Good else Bad,
-                            bold = true
-                        )
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-            }
 
             // ---- Wallet ----
             Card(
@@ -201,14 +170,14 @@ fun ShopScreen(s: GameState, vm: GameViewModel) {
             Spacer(Modifier.height(8.dp))
             s.stylists.forEach { st -> StylistTrainingCard(st, s, vm) }
 
-            // ---- Start next day ----
+            // ---- Back to the salon floor ----
             Spacer(Modifier.height(20.dp))
             Button(
-                onClick = vm::startNextDay,
+                onClick = vm::closeShop,
                 colors = ButtonDefaults.buttonColors(containerColor = Cream, contentColor = PinkDark),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) { Text("OPEN FOR DAY ${s.day + 1}", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+            ) { Text("\u2190 Back to Salon", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -217,19 +186,6 @@ fun ShopScreen(s: GameState, vm: GameViewModel) {
 @Composable
 private fun SectionTitle(text: String) {
     Text(text, color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String, color: androidx.compose.ui.graphics.Color? = null, bold: Boolean = false) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, fontSize = 14.sp, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-        Text(
-            value,
-            fontSize = 14.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
-            color = color ?: MaterialTheme.colorScheme.onSurface
-        )
-    }
 }
 
 @Composable

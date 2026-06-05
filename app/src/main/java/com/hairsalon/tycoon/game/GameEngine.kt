@@ -197,12 +197,20 @@ object GameEngine {
         }
 
         return s.copy(
-            money = money, phase = Phase.SHOP, lastSummary = summary,
+            money = money, phase = Phase.DAY_SUMMARY, lastSummary = summary,
             queue = emptyList(), active = emptyList(),
             stylists = s.stylists.map { it.copy(stamina = it.maxStamina) },
             message = null
         )
     }
+
+    /** Open the upgrades shop from the salon floor (pauses the day). */
+    fun openShop(s: GameState): GameState =
+        if (s.phase == Phase.PLAYING) s.copy(phase = Phase.SHOP, message = null) else s
+
+    /** Return to the salon floor from the upgrades shop, resuming the same day. */
+    fun closeShop(s: GameState): GameState =
+        if (s.phase == Phase.SHOP) s.copy(phase = Phase.PLAYING, message = null) else s
 
     fun startNextDay(s: GameState): GameState = s.copy(
         phase = Phase.PLAYING,

@@ -1,7 +1,7 @@
 package com.hairsalon.tycoon.game
 
 /** Which screen / mode the game is in. */
-enum class Phase { MENU, PLAYING, SHOP, GAME_OVER }
+enum class Phase { MENU, PLAYING, SHOP, DAY_SUMMARY, GAME_OVER }
 
 /** A type of service a client can request. Higher tiers unlock pricier work. */
 enum class ServiceType(

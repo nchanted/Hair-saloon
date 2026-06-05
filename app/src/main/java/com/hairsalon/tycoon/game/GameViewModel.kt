@@ -39,7 +39,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                     state = next
                     // A tick can auto-close the day (-> SHOP) or end the run (-> GAME_OVER).
                     when (next.phase) {
-                        Phase.SHOP -> persist()
+                        Phase.DAY_SUMMARY -> persist()
                         Phase.GAME_OVER -> clearSave()
                         else -> {}
                     }
@@ -89,6 +89,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun seat(clientId: Long) { state = GameEngine.seatClient(state, clientId) }
+
+    fun openShop() { state = GameEngine.openShop(state); persist() }
+    fun closeShop() { state = GameEngine.closeShop(state) }
 
     fun endDay() {
         state = GameEngine.endDay(state)

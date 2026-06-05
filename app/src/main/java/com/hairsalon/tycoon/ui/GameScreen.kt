@@ -46,35 +46,39 @@ import com.hairsalon.tycoon.ui.theme.Good
 import com.hairsalon.tycoon.ui.theme.Pink500
 import com.hairsalon.tycoon.ui.theme.Teal
 
-/**
- * Mirrors GameEngine.seatClient's choice so the UI can tell the player, up front,
- * which stylist will take the next client they tap.
- */
+/** Mirrors GameEngine.seatClient's choice so the UI can tell the player who's up next. */
 private fun nextStylistFor(s: GameState): Stylist? {
     val busy = s.active.map { it.stylistId }.toHashSet()
     return s.stylists.filter { it.id !in busy && it.stamina >= 20f }.maxByOrNull { it.skill }
 }
 
+/** Maps remaining day time to a salon clock (opens 9:00, closes 18:00). */
+private fun timeOfDay(dayTimeLeft: Float): String {
+    val frac = (1f - dayTimeLeft / Balance.DAY_LENGTH).coerceIn(0f, 1f)
+    val minutes = 9 * 60 + (9 * 60 * frac).toInt()
+    val h24 = (minutes / 60).coerceAtMost(23)
+    val m = minutes % 60
+    val ampm = if (h24 < 12) "AM" else "PM"
+    val h12 = ((h24 + 11) % 12) + 1
+    return "%d:%02d %s".format(h12, m, ampm)
+}
+
 @Composable
-fun GameScreen(s: GameState, onSeat: (Long) -> Unit, onEndDay: () -> Unit) {
+fun GameScreen(s: GameState, onSeat: (Long) -> Unit, onEndDay: () -> Unit, onOpenShop: () -> Unit) {
     val closing = s.dayTimeLeft <= 0f
     val busyIds = s.active.map { it.stylistId }.toSet()
     val chairFree = s.active.size < s.stationCount
     val nextStylist = nextStylistFor(s)
 
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(12.dp)
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        SalonBackground(s.salonTier, Modifier.matchParentSize())
+
         val landscape = maxWidth > maxHeight
         if (landscape) {
-            Row(Modifier.fillMaxSize()) {
-                // ---- Left pane: status, staff, controls ----
-                Column(Modifier.width(300.dp).fillMaxHeight()) {
+            Row(Modifier.fillMaxSize().padding(12.dp)) {
+                Column(Modifier.width(280.dp).fillMaxHeight()) {
                     TopBar(s, closing)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     SectionLabel("Stylists")
                     LazyColumn(
                         Modifier.weight(1f).fillMaxWidth(),
@@ -85,55 +89,74 @@ fun GameScreen(s: GameState, onSeat: (Long) -> Unit, onEndDay: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    EndDayButton(closing, onEndDay)
+                    ControlButtons(closing, onOpenShop, onEndDay)
                 }
                 Spacer(Modifier.width(12.dp))
-                // ---- Right pane: the salon floor ----
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     AssignmentHint(chairFree, nextStylist)
                     Spacer(Modifier.height(8.dp))
                     SectionLabel("Chairs (${s.active.size}/${s.stationCount})")
                     ChairsRow(s)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     SectionLabel(if (closing) "Closing \u2014 finish your clients" else "Waiting (${s.queue.size})")
                     QueueArea(s, closing, nextStylist, Modifier.weight(1f), onSeat)
                     MessageLine(s)
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().padding(12.dp)) {
                 TopBar(s, closing)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 AssignmentHint(chairFree, nextStylist)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
 
                 SectionLabel("Chairs (${s.active.size}/${s.stationCount})")
                 ChairsRow(s)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
 
                 SectionLabel("Stylists")
                 StylistsRow(s.stylists, busyIds, nextStylist?.id)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
 
                 SectionLabel(if (closing) "Closing \u2014 finish your clients" else "Waiting (${s.queue.size})")
                 QueueArea(s, closing, nextStylist, Modifier.weight(1f), onSeat)
 
                 MessageLine(s)
-                EndDayButton(closing, onEndDay)
+                ControlButtons(closing, onOpenShop, onEndDay)
             }
         }
     }
 }
 
-/** Tells the player exactly how seating works, and who's next in line to take a client. */
+@Composable
+private fun ControlButtons(closing: Boolean, onOpenShop: () -> Unit, onEndDay: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+            onClick = onOpenShop,
+            modifier = Modifier.weight(1f).height(46.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Teal, contentColor = Color.White)
+        ) { Text("\uD83D\uDEE0\uFE0F Upgrades", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+        Button(
+            onClick = onEndDay,
+            modifier = Modifier.weight(1f).height(46.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (closing) Pink500 else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (closing) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) { Text(if (closing) "Close up" else "End day", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+    }
+}
+
 @Composable
 private fun AssignmentHint(chairFree: Boolean, nextStylist: Stylist?) {
     val (icon, msg, tint) = when {
         !chairFree -> Triple("\uD83D\uDCBA", "All chairs are full \u2014 wait for a client to finish.", Amber)
-        nextStylist == null -> Triple("\uD83D\uDCA4", "No stylist is free & rested \u2014 wait for one to recover.", Bad)
+        nextStylist == null -> Triple("\uD83D\uDCA4", "No stylist is free & rested \u2014 wait for one.", Bad)
         else -> Triple(
             "\uD83D\uDC46",
-            "Tap a waiting client \u2192 ${nextStylist.emoji} ${nextStylist.name} (skill ${nextStylist.skill}) will take them.",
+            "Tap a client \u2192 ${nextStylist.emoji} ${nextStylist.name} (skill ${nextStylist.skill}) takes them.",
             Teal
         )
     }
@@ -142,10 +165,10 @@ private fun AssignmentHint(chairFree: Boolean, nextStylist: Stylist?) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 18.sp)
+            Text(icon, fontSize = 16.sp)
             Spacer(Modifier.width(8.dp))
             Text(msg, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = tint)
         }
@@ -163,19 +186,6 @@ private fun MessageLine(s: GameState) {
             fontWeight = FontWeight.Medium
         )
     }
-}
-
-@Composable
-private fun EndDayButton(closing: Boolean, onEndDay: () -> Unit) {
-    Button(
-        onClick = onEndDay,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (closing) Pink500 else MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (closing) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    ) { Text(if (closing) "CLOSE UP \u2192 SHOP" else "End day early", fontWeight = FontWeight.Bold) }
 }
 
 @Composable
@@ -216,31 +226,39 @@ private fun TopBar(s: GameState, closing: Boolean) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Day ${s.day}", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                    Text(s.tierName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Day ${s.day}", fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text(s.tierName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("\uD83D\uDCB0 ${s.money}", fontWeight = FontWeight.Black, fontSize = 22.sp, color = Good)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("\uD83D\uDCB0 ${s.money}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Good)
+                    Text(
+                        if (closing) "\uD83D\uDD52 Closed" else "\uD83D\uDD52 ${timeOfDay(s.dayTimeLeft)}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("\u2B50", fontSize = 13.sp)
+                Text("\u2B50", fontSize = 12.sp)
                 Spacer(Modifier.width(6.dp))
                 LinearProgressIndicator(
                     progress = (s.reputation.toFloat() / s.maxReputation).coerceIn(0f, 1f),
-                    modifier = Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.weight(1f).height(9.dp).clip(RoundedCornerShape(6.dp)),
                     color = Amber,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("${s.reputation}/${s.maxReputation}", fontSize = 12.sp)
+                Text("${s.reputation}/${s.maxReputation}", fontSize = 11.sp)
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(5.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (closing) "\uD83D\uDD12" else "\u23F1\uFE0F", fontSize = 13.sp)
+                Text(if (closing) "\uD83D\uDD12" else "\u23F1\uFE0F", fontSize = 12.sp)
                 Spacer(Modifier.width(6.dp))
                 LinearProgressIndicator(
                     progress = (s.dayTimeLeft / Balance.DAY_LENGTH).coerceIn(0f, 1f),
-                    modifier = Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.weight(1f).height(9.dp).clip(RoundedCornerShape(6.dp)),
                     color = Teal,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
@@ -265,20 +283,19 @@ private fun ChairsRow(s: GameState) {
         }
         items(emptyChairs) {
             Card(
-                Modifier.size(width = 150.dp, height = 200.dp),
-                shape = RoundedCornerShape(16.dp),
+                Modifier.size(width = 104.dp, height = 150.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     ChairVisual(
                         occupied = false,
                         faceEmoji = null,
                         capeColor = Color.Transparent,
-                        modifier = Modifier.fillMaxWidth().height(150.dp)
+                        modifier = Modifier.fillMaxWidth().height(112.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    Text("Open chair", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    Text("waiting for a client", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Text("Open", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
         }
@@ -289,33 +306,33 @@ private fun ChairsRow(s: GameState) {
 private fun ActiveChairCard(a: ActiveService, stylist: Stylist?, capeColor: Color) {
     val onTrack = a.quality >= a.client.expectation
     Card(
-        Modifier.size(width = 150.dp, height = 200.dp),
-        shape = RoundedCornerShape(16.dp),
+        Modifier.size(width = 104.dp, height = 150.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(Modifier.padding(8.dp)) {
+        Column(Modifier.padding(6.dp)) {
             ChairVisual(
                 occupied = true,
                 faceEmoji = a.client.face,
                 capeColor = capeColor,
-                modifier = Modifier.fillMaxWidth().height(116.dp)
+                modifier = Modifier.fillMaxWidth().height(86.dp)
             )
             Text(
-                "${stylist?.emoji ?: ""} ${stylist?.name ?: "?"} \u2702\uFE0F",
+                "${stylist?.emoji ?: ""} ${stylist?.name ?: "?"}",
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 maxLines = 1
             )
-            Text("${a.client.service.emoji} ${a.client.service.label}", fontSize = 11.sp, maxLines = 1)
+            Text("${a.client.service.emoji} ${a.client.service.label}", fontSize = 10.sp, maxLines = 1)
             Text(
-                "Quality ${a.quality} / need ${a.client.expectation}",
+                "Q ${a.quality}/${a.client.expectation}",
                 fontSize = 10.sp,
                 color = if (onTrack) Good else Bad
             )
             Spacer(Modifier.weight(1f))
             LinearProgressIndicator(
                 progress = a.progress.coerceIn(0f, 1f),
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)),
                 color = Pink500,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
@@ -323,7 +340,7 @@ private fun ActiveChairCard(a: ActiveService, stylist: Stylist?, capeColor: Colo
     }
 }
 
-/** Horizontal stylist chip (portrait). Highlights whoever is next to be auto-assigned. */
+/** Compact horizontal stylist chip (portrait). Highlights whoever is next to be assigned. */
 @Composable
 private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -332,27 +349,28 @@ private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?
             val resting = !busy && st.stamina < 20f
             val isNext = st.id == nextId
             Card(
-                Modifier.size(width = 116.dp, height = 92.dp),
+                Modifier.size(width = 94.dp, height = 74.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isNext) Teal else MaterialTheme.colorScheme.surface
                 )
             ) {
-                Column(Modifier.padding(8.dp)) {
+                Column(Modifier.padding(7.dp)) {
                     Text(
                         "${st.emoji} ${st.name}",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                         color = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         when {
-                            busy -> "working\u2026"
-                            isNext -> "UP NEXT \u2022 sk ${st.skill}"
+                            busy -> "working"
+                            isNext -> "up next"
                             resting -> "resting"
-                            else -> "ready \u2022 sk ${st.skill}"
+                            else -> "sk ${st.skill}"
                         },
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         color = when {
                             isNext -> Color.White
                             resting -> Bad
@@ -362,7 +380,7 @@ private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?
                     Spacer(Modifier.weight(1f))
                     LinearProgressIndicator(
                         progress = (st.stamina / st.maxStamina).coerceIn(0f, 1f),
-                        modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)),
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                         color = if (st.stamina < 25f) Bad else if (isNext) Color.White else Teal,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -372,7 +390,7 @@ private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?
     }
 }
 
-/** Full-width stylist row (landscape left pane). */
+/** Full-width compact stylist row (landscape left pane). */
 @Composable
 private fun StylistRowCard(st: Stylist, busy: Boolean, isNext: Boolean) {
     val resting = !busy && st.stamina < 20f
@@ -383,22 +401,22 @@ private fun StylistRowCard(st: Stylist, busy: Boolean, isNext: Boolean) {
             containerColor = if (isNext) Teal else MaterialTheme.colorScheme.surface
         )
     ) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     "${st.emoji} ${st.name}",
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     when {
-                        busy -> "working\u2026"
-                        isNext -> "UP NEXT"
+                        busy -> "working"
+                        isNext -> "up next"
                         resting -> "resting"
-                        else -> "ready"
+                        else -> "sk ${st.skill}"
                     },
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = when {
                         isNext -> Color.White
@@ -407,15 +425,10 @@ private fun StylistRowCard(st: Stylist, busy: Boolean, isNext: Boolean) {
                     }
                 )
             }
-            Text(
-                "skill ${st.skill} \u2022 speed ${"%.2f".format(st.speed)}x",
-                fontSize = 10.sp,
-                color = if (isNext) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(5.dp))
             LinearProgressIndicator(
                 progress = (st.stamina / st.maxStamina).coerceIn(0f, 1f),
-                modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                 color = if (st.stamina < 25f) Bad else if (isNext) Color.White else Teal,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
@@ -433,7 +446,7 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
     }
     Card(
         Modifier
-            .size(width = 122.dp, height = 162.dp)
+            .size(width = 108.dp, height = 150.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -441,14 +454,11 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
         Column(Modifier.padding(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(patienceColor.copy(alpha = 0.18f)),
+                    Modifier.size(32.dp).clip(CircleShape).background(patienceColor.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
-                ) { Text(c.face, fontSize = 22.sp) }
+                ) { Text(c.face, fontSize = 18.sp) }
                 Spacer(Modifier.width(6.dp))
-                Text(c.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                Text(c.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
             }
             Spacer(Modifier.height(4.dp))
             Text("${c.service.emoji} ${c.service.label}", fontSize = 11.sp)
@@ -459,7 +469,7 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(3.dp))
             Text(
-                if (nextStylist != null) "\uD83D\uDC46 Tap \u2192 ${nextStylist.name}" else "\uD83D\uDC46 Tap to seat",
+                if (nextStylist != null) "\uD83D\uDC46 \u2192 ${nextStylist.name}" else "\uD83D\uDC46 Tap to seat",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = Teal,
@@ -468,7 +478,7 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
             Spacer(Modifier.weight(1f))
             LinearProgressIndicator(
                 progress = patienceFrac,
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)),
                 color = patienceColor,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
@@ -481,7 +491,7 @@ private fun SectionLabel(text: String) {
     Text(
         text,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
+        fontSize = 12.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(bottom = 4.dp)
     )
