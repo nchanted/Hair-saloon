@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
@@ -22,12 +23,6 @@ fun SalonBackground(tier: Int, modifier: Modifier = Modifier) {
         2 -> Color(0xFFE3F1EE)
         3 -> Color(0xFFF7E4EE)
         else -> Color(0xFFECE7F6)
-    }
-    val wallShade = when (t) {
-        1 -> Color(0xFFEADDD2)
-        2 -> Color(0xFFD3E7E2)
-        3 -> Color(0xFFEFD5E2)
-        else -> Color(0xFFDED4F0)
     }
     val floor = when (t) {
         1 -> Color(0xFFC9A77F)
@@ -47,12 +42,26 @@ fun SalonBackground(tier: Int, modifier: Modifier = Modifier) {
         val h = size.height
         val floorY = h * 0.60f
 
-        // Wall with a soft vertical gradient feel (two bands).
-        drawRect(wall, size = Size(w, floorY))
-        drawRect(wallShade, topLeft = Offset(0f, floorY * 0.55f), size = Size(w, floorY * 0.45f))
+        // Wall: vertical gradient (lighter near ceiling, shaded toward the floor).
+        drawRect(
+            Brush.verticalGradient(
+                listOf(tint(wall, 0.12f), wall, shade(wall, 0.10f)),
+                startY = 0f, endY = floorY
+            ),
+            size = Size(w, floorY)
+        )
+        // A touch more shade just above the skirting for grounding.
+        drawRect(shade(wall, 0.06f), topLeft = Offset(0f, floorY * 0.78f), size = Size(w, floorY * 0.22f))
 
-        // Floor.
-        drawRect(floor, topLeft = Offset(0f, floorY), size = Size(w, h - floorY))
+        // Floor: gradient darker near the wall (far) to lighter near the viewer (near) = depth.
+        drawRect(
+            Brush.verticalGradient(
+                listOf(shade(floor, 0.20f), tint(floor, 0.05f)),
+                startY = floorY, endY = h
+            ),
+            topLeft = Offset(0f, floorY),
+            size = Size(w, h - floorY)
+        )
         // Skirting board.
         drawRect(accent.copy(alpha = 0.55f), topLeft = Offset(0f, floorY - h * 0.012f), size = Size(w, h * 0.014f))
         // Subtle floorboards / tiles.

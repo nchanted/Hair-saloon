@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -217,7 +216,8 @@ private fun QueueArea(
 private fun TopBar(s: GameState, closing: Boolean) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(
@@ -285,7 +285,8 @@ private fun ChairsRow(s: GameState) {
             Card(
                 Modifier.size(width = 104.dp, height = 150.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
                 Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     ChairVisual(
@@ -308,7 +309,8 @@ private fun ActiveChairCard(a: ActiveService, stylist: Stylist?, capeColor: Colo
     Card(
         Modifier.size(width = 104.dp, height = 150.dp),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(Modifier.padding(6.dp)) {
             ChairVisual(
@@ -348,34 +350,41 @@ private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?
             val busy = busyIds.contains(st.id)
             val resting = !busy && st.stamina < 20f
             val isNext = st.id == nextId
+            val onCard = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
+            val onCardDim = if (isNext) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
             Card(
-                Modifier.size(width = 94.dp, height = 74.dp),
+                Modifier.size(width = 120.dp, height = 110.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isNext) Teal else MaterialTheme.colorScheme.surface
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Column(Modifier.padding(7.dp)) {
+                Column(Modifier.padding(8.dp)) {
                     Text(
                         "${st.emoji} ${st.name}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        color = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
+                        color = onCard
                     )
                     Text(
                         when {
                             busy -> "working"
                             isNext -> "up next"
                             resting -> "resting"
-                            else -> "sk ${st.skill}"
+                            else -> "ready"
                         },
                         fontSize = 9.sp,
-                        color = when {
-                            isNext -> Color.White
-                            resting -> Bad
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        color = if (resting && !isNext) Bad else onCardDim
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "\u2702\uFE0F${st.skill}  \u26A1${"%.1f".format(st.speed)}\u00D7  \uD83D\uDCAA${st.maxStamina.toInt()}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        color = onCard
                     )
                     Spacer(Modifier.weight(1f))
                     LinearProgressIndicator(
@@ -394,37 +403,38 @@ private fun StylistsRow(stylists: List<Stylist>, busyIds: Set<Int>, nextId: Int?
 @Composable
 private fun StylistRowCard(st: Stylist, busy: Boolean, isNext: Boolean) {
     val resting = !busy && st.stamina < 20f
+    val onCard = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
+    val onCardDim = if (isNext) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isNext) Teal else MaterialTheme.colorScheme.surface
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(Modifier.padding(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    "${st.emoji} ${st.name}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
-                )
+                Text("${st.emoji} ${st.name}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = onCard)
                 Text(
                     when {
                         busy -> "working"
                         isNext -> "up next"
                         resting -> "resting"
-                        else -> "sk ${st.skill}"
+                        else -> "ready"
                     },
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = when {
-                        isNext -> Color.White
-                        resting -> Bad
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    color = if (resting && !isNext) Bad else onCardDim
                 )
             }
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "\u2702\uFE0F Skill ${st.skill}   \u26A1 Speed ${"%.1f".format(st.speed)}\u00D7   \uD83D\uDCAA Stamina ${st.maxStamina.toInt()}",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = onCard
+            )
             Spacer(Modifier.height(5.dp))
             LinearProgressIndicator(
                 progress = (st.stamina / st.maxStamina).coerceIn(0f, 1f),
@@ -436,6 +446,14 @@ private fun StylistRowCard(st: Stylist, busy: Boolean, isNext: Boolean) {
     }
 }
 
+private val SHIRT_PALETTE = listOf(
+    Color(0xFF26A69A), Color(0xFFEC407A), Color(0xFFFFB300), Color(0xFF5C6BC0),
+    Color(0xFF66BB6A), Color(0xFF8D6E63), Color(0xFF42A5F5), Color(0xFFAB47BC)
+)
+private val PANTS_PALETTE = listOf(
+    Color(0xFF37474F), Color(0xFF455A64), Color(0xFF5D4037), Color(0xFF283593), Color(0xFF424242)
+)
+
 @Composable
 private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
     val patienceFrac = (c.patience / c.maxPatience).coerceIn(0f, 1f)
@@ -444,35 +462,29 @@ private fun ClientCard(c: Client, nextStylist: Stylist?, onClick: () -> Unit) {
         patienceFrac > 0.25f -> Amber
         else -> Bad
     }
+    val shirt = SHIRT_PALETTE[(c.id % SHIRT_PALETTE.size).toInt()]
+    val pants = PANTS_PALETTE[(c.id % PANTS_PALETTE.size).toInt()]
     Card(
         Modifier
-            .size(width = 108.dp, height = 150.dp)
+            .size(width = 116.dp, height = 196.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(Modifier.padding(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(32.dp).clip(CircleShape).background(patienceColor.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) { Text(c.face, fontSize = 18.sp) }
-                Spacer(Modifier.width(6.dp))
-                Text(c.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text("${c.service.emoji} ${c.service.label}", fontSize = 11.sp)
-            Text(
-                "\uD83D\uDCB0 ${c.payValue}  \u2022  exp ${c.expectation}",
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            ClientFigure(
+                faceEmoji = c.face,
+                shirt = shirt,
+                pants = pants,
+                modifier = Modifier.fillMaxWidth().height(104.dp)
             )
-            Spacer(Modifier.height(3.dp))
+            Text(c.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+            Text("${c.service.emoji} ${c.service.label}", fontSize = 11.sp, maxLines = 1)
             Text(
-                if (nextStylist != null) "\uD83D\uDC46 \u2192 ${nextStylist.name}" else "\uD83D\uDC46 Tap to seat",
+                "\uD83D\uDCB0 ${c.payValue} \u2022 exp ${c.expectation}",
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Teal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
             Spacer(Modifier.weight(1f))

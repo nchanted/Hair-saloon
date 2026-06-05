@@ -11,17 +11,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hairsalon.tycoon.ui.theme.Pink500
-import com.hairsalon.tycoon.ui.theme.PinkDark
 
 /**
- * A stylized salon chair drawn with Canvas (no image assets). When [occupied] is true a
- * caped client is drawn sitting in it, with [faceEmoji] as their head for variety.
- * [capeColor] tints the cape so the player can tell chairs apart at a glance.
+ * A salon chair drawn with Canvas, shaded with gradients + a ground shadow to read as 3D.
+ * When [occupied], a caped client sits in it with [faceEmoji] as their head.
  */
 @Composable
 fun ChairVisual(
@@ -30,10 +29,8 @@ fun ChairVisual(
     capeColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val metal = Color(0xFFB0BEC5)
-    val metalDark = Color(0xFF78909C)
-    val seatColor = if (occupied) Pink500 else Color(0xFFD7CCC8)
-    val seatDark = if (occupied) PinkDark else Color(0xFFA1887F)
+    val metal = Color(0xFFC4CDD3)
+    val seatColor = if (occupied) Pink500 else Color(0xFFCFC3BC)
 
     Box(modifier, contentAlignment = Alignment.TopCenter) {
         Canvas(Modifier.fillMaxSize()) {
@@ -41,38 +38,69 @@ fun ChairVisual(
             val h = size.height
             val cx = w / 2f
 
-            // Floor base (5-star style: a flat ellipse) and gas-lift post.
-            val baseW = w * 0.52f
-            val baseH = h * 0.06f
-            drawOval(metalDark, Offset(cx - baseW / 2f, h * 0.90f), Size(baseW, baseH))
-            val postW = w * 0.10f
+            // Ground shadow for grounding / depth.
+            drawOval(
+                Color.Black.copy(alpha = 0.16f),
+                topLeft = Offset(cx - w * 0.30f, h * 0.88f),
+                size = Size(w * 0.60f, h * 0.09f)
+            )
+
+            // 5-star base (flat ellipse) with a vertical sheen.
+            val baseW = w * 0.54f
+            val baseH = h * 0.07f
+            drawOval(
+                Brush.verticalGradient(
+                    listOf(tint(metal, 0.3f), shade(metal, 0.35f)),
+                    startY = h * 0.86f, endY = h * 0.95f
+                ),
+                topLeft = Offset(cx - baseW / 2f, h * 0.86f),
+                size = Size(baseW, baseH)
+            )
+
+            // Gas-lift post with a metallic horizontal gradient.
+            val postW = w * 0.11f
             drawRoundRect(
-                metal,
-                topLeft = Offset(cx - postW / 2f, h * 0.66f),
+                Brush.horizontalGradient(
+                    listOf(shade(metal, 0.3f), tint(metal, 0.45f), shade(metal, 0.3f)),
+                    startX = cx - postW / 2f, endX = cx + postW / 2f
+                ),
+                topLeft = Offset(cx - postW / 2f, h * 0.64f),
                 size = Size(postW, h * 0.26f),
                 cornerRadius = CornerRadius(postW / 2f, postW / 2f)
             )
 
-            // Backrest (behind the client).
+            // Backrest, vertical gradient + soft side shadow.
             val brW = w * 0.46f
             drawRoundRect(
-                seatColor,
+                Color.Black.copy(alpha = 0.10f),
+                topLeft = Offset(cx - brW / 2f + 4f, h * 0.10f),
+                size = Size(brW, h * 0.50f),
+                cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
+            )
+            drawRoundRect(
+                Brush.verticalGradient(
+                    listOf(tint(seatColor, 0.18f), seatColor, shade(seatColor, 0.22f)),
+                    startY = h * 0.08f, endY = h * 0.60f
+                ),
                 topLeft = Offset(cx - brW / 2f, h * 0.08f),
                 size = Size(brW, h * 0.52f),
                 cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
             )
-            // Headrest accent band.
+            // Headrest highlight band.
             drawRoundRect(
-                seatDark,
-                topLeft = Offset(cx - brW / 2f, h * 0.08f),
-                size = Size(brW, h * 0.10f),
-                cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
+                tint(seatColor, 0.32f),
+                topLeft = Offset(cx - brW / 2f + 3f, h * 0.10f),
+                size = Size(brW - 6f, h * 0.07f),
+                cornerRadius = CornerRadius(w * 0.10f, w * 0.10f)
             )
 
-            // Seat cushion.
+            // Seat cushion with gradient.
             val seatW = w * 0.62f
             drawRoundRect(
-                seatColor,
+                Brush.verticalGradient(
+                    listOf(tint(seatColor, 0.2f), shade(seatColor, 0.2f)),
+                    startY = h * 0.55f, endY = h * 0.69f
+                ),
                 topLeft = Offset(cx - seatW / 2f, h * 0.55f),
                 size = Size(seatW, h * 0.14f),
                 cornerRadius = CornerRadius(w * 0.07f, w * 0.07f)
@@ -82,21 +110,12 @@ fun ChairVisual(
             val armW = w * 0.08f
             val armH = h * 0.13f
             val armY = h * 0.49f
-            drawRoundRect(
-                metal,
-                topLeft = Offset(cx - seatW / 2f - armW * 0.4f, armY),
-                size = Size(armW, armH),
-                cornerRadius = CornerRadius(armW / 2f, armW / 2f)
-            )
-            drawRoundRect(
-                metal,
-                topLeft = Offset(cx + seatW / 2f - armW * 0.6f, armY),
-                size = Size(armW, armH),
-                cornerRadius = CornerRadius(armW / 2f, armW / 2f)
-            )
+            val armBrush = Brush.verticalGradient(listOf(tint(metal, 0.3f), shade(metal, 0.3f)))
+            drawRoundRect(armBrush, Offset(cx - seatW / 2f - armW * 0.4f, armY), Size(armW, armH), CornerRadius(armW / 2f, armW / 2f))
+            drawRoundRect(armBrush, Offset(cx + seatW / 2f - armW * 0.6f, armY), Size(armW, armH), CornerRadius(armW / 2f, armW / 2f))
 
             if (occupied) {
-                // Cape draped over the client: a trapezoid from the neck down to the lap.
+                // Cape with vertical gradient + highlight.
                 val topY = h * 0.36f
                 val botY = h * 0.62f
                 val cape = Path().apply {
@@ -106,8 +125,14 @@ fun ChairVisual(
                     lineTo(cx - w * 0.24f, botY)
                     close()
                 }
-                drawPath(cape, capeColor)
-                // White collar at the neck.
+                drawPath(
+                    cape,
+                    Brush.verticalGradient(
+                        listOf(tint(capeColor, 0.22f), capeColor, shade(capeColor, 0.25f)),
+                        startY = topY, endY = botY
+                    )
+                )
+                // Collar.
                 drawRoundRect(
                     Color.White,
                     topLeft = Offset(cx - w * 0.11f, h * 0.345f),
@@ -117,7 +142,6 @@ fun ChairVisual(
             }
         }
 
-        // The client's head sits just above the cape collar.
         if (occupied && faceEmoji != null) {
             Text(faceEmoji, fontSize = 30.sp, modifier = Modifier.padding(top = 14.dp))
         }
